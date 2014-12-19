@@ -186,7 +186,7 @@ public class ConversationFragment extends ListFragment
     builder.setTitle(R.string.ConversationFragment_confirm_message_delete);
     builder.setIcon(Dialogs.resolveIcon(getActivity(), R.attr.dialog_alert_icon));
     builder.setCancelable(true);
-    builder.setMessage(R.string.ConversationFragment_are_you_sure_you_want_to_permanently_delete_this_message);
+    builder.setMessage(R.string.ConversationFragment_are_you_sure_you_want_to_permanently_delete_all_selected_messages);
     builder.setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
       @Override
       public void onClick(DialogInterface dialog, int which) {
