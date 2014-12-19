@@ -54,6 +54,9 @@ public class ConversationFragment extends ListFragment
 {
   private static final String TAG = ConversationFragment.class.getSimpleName();
 
+  private final ActionModeCallback     actionModeCallback     = new ActionModeCallback();
+  private final SelectionClickListener selectionClickListener = new SelectionClickListener();
+
   private ConversationFragmentListener listener;
 
   private MasterSecret masterSecret;
@@ -91,7 +94,7 @@ public class ConversationFragment extends ListFragment
 
   private void initializeListAdapter() {
     if (this.recipients != null && this.threadId != -1) {
-      this.setListAdapter(new ConversationAdapter(getActivity(), masterSecret,
+      this.setListAdapter(new ConversationAdapter(getActivity(), masterSecret, selectionClickListener,
                                                   new FailedIconClickHandler(),
                                                   (!this.recipients.isSingleRecipient()) || this.recipients.isGroupRecipient(),
                                                   DirectoryHelper.isPushDestination(getActivity(), this.recipients)));
@@ -101,35 +104,8 @@ public class ConversationFragment extends ListFragment
   }
 
   private void initializeContextualActionBar() {
-    getListView().setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-      @Override
-      public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-        if (actionMode != null) {
-          return false;
-        }
-
-        MessageRecord messageRecord = ((ConversationItem)view).getMessageRecord();
-        ((ConversationAdapter) getListAdapter()).toggleBatchSelected(messageRecord);
-        ((ConversationAdapter) getListAdapter()).notifyDataSetChanged();
-
-        actionMode = ((ActionBarActivity)getActivity()).startSupportActionMode(actionModeCallback);
-
-        return true;
-      }
-    });
-
-    getListView().setOnItemClickListener(new AdapterView.OnItemClickListener() {
-      @Override
-      public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        if (actionMode != null) {
-          MessageRecord messageRecord = ((ConversationItem)view).getMessageRecord();
-          ((ConversationAdapter) getListAdapter()).toggleBatchSelected(messageRecord);
-          ((ConversationAdapter) getListAdapter()).notifyDataSetChanged();
-
-          setCorrectMenuVisibility(actionMode.getMenu());
-        }
-      }
-    });
+    getListView().setOnItemClickListener(selectionClickListener);
+    getListView().setOnItemLongClickListener(selectionClickListener);
   }
 
   private void setCorrectMenuVisibility(Menu menu) {
@@ -349,7 +325,36 @@ public class ConversationFragment extends ListFragment
     public void setComposeText(String text);
   }
 
-  private ActionMode.Callback actionModeCallback = new ActionMode.Callback() {
+  public class SelectionClickListener
+      implements AdapterView.OnItemLongClickListener, AdapterView.OnItemClickListener
+  {
+    @Override
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+        if (actionMode != null && view instanceof ConversationItem) {
+          MessageRecord messageRecord = ((ConversationItem)view).getMessageRecord();
+          ((ConversationAdapter) getListAdapter()).toggleBatchSelected(messageRecord);
+          ((ConversationAdapter) getListAdapter()).notifyDataSetChanged();
+
+          setCorrectMenuVisibility(actionMode.getMenu());
+        }
+    }
+
+    @Override
+    public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+      if (actionMode == null && view instanceof ConversationItem) {
+        MessageRecord messageRecord = ((ConversationItem)view).getMessageRecord();
+        ((ConversationAdapter) getListAdapter()).toggleBatchSelected(messageRecord);
+        ((ConversationAdapter) getListAdapter()).notifyDataSetChanged();
+
+        actionMode = ((ActionBarActivity)getActivity()).startSupportActionMode(actionModeCallback);
+        return true;
+      }
+
+      return false;
+    }
+  }
+
+  private class ActionModeCallback implements ActionMode.Callback {
 
     @Override
     public boolean onCreateActionMode(ActionMode mode, Menu menu) {

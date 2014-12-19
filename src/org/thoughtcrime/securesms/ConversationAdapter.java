@@ -39,6 +39,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.thoughtcrime.securesms.ConversationFragment.SelectionClickListener;
+
 /**
  * A cursor adapter for a conversation thread.  Ultimately
  * used by ComposeMessageActivity to display a conversation
@@ -59,19 +61,21 @@ public class ConversationAdapter extends CursorAdapter implements AbsListView.Re
 
   private final Set<MessageRecord> batchSelected = Collections.synchronizedSet(new HashSet<MessageRecord>());
 
-  private final Handler        failedIconClickHandler;
-  private final Context        context;
-  private final MasterSecret   masterSecret;
-  private final boolean        groupThread;
-  private final boolean        pushDestination;
-  private final LayoutInflater inflater;
+  private final SelectionClickListener selectionClickListener;
+  private final Handler                failedIconClickHandler;
+  private final Context                context;
+  private final MasterSecret           masterSecret;
+  private final boolean                groupThread;
+  private final boolean                pushDestination;
+  private final LayoutInflater         inflater;
 
-  public ConversationAdapter(Context context, MasterSecret masterSecret,
+  public ConversationAdapter(Context context, MasterSecret masterSecret, SelectionClickListener selectionClickListener,
                              Handler failedIconClickHandler, boolean groupThread, boolean pushDestination)
   {
     super(context, null, 0);
     this.context                = context;
     this.masterSecret           = masterSecret;
+    this.selectionClickListener = selectionClickListener;
     this.failedIconClickHandler = failedIconClickHandler;
     this.groupThread            = groupThread;
     this.pushDestination        = pushDestination;
@@ -85,7 +89,8 @@ public class ConversationAdapter extends CursorAdapter implements AbsListView.Re
     String type                 = cursor.getString(cursor.getColumnIndexOrThrow(MmsSmsDatabase.TRANSPORT));
     MessageRecord messageRecord = getMessageRecord(id, cursor, type);
 
-    item.set(masterSecret, messageRecord, batchSelected, failedIconClickHandler, groupThread, pushDestination);
+    item.set(masterSecret, messageRecord, batchSelected, selectionClickListener,
+             failedIconClickHandler, groupThread, pushDestination);
   }
 
   @Override

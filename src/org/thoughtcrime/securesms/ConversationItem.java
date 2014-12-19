@@ -38,6 +38,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.thoughtcrime.securesms.ConversationFragment.SelectionClickListener;
 import org.thoughtcrime.securesms.contacts.ContactPhotoFactory;
 import org.thoughtcrime.securesms.crypto.MasterSecret;
 import org.thoughtcrime.securesms.database.DatabaseFactory;
@@ -109,6 +110,7 @@ public class ConversationItem extends LinearLayout {
   private  ImageView pendingIndicator;
 
   private Set<MessageRecord>              batchSelected;
+  private SelectionClickListener          selectionClickListener;
   private View                            mmsContainer;
   private ImageView                       mmsThumbnail;
   private Button                          mmsDownloadButton;
@@ -117,11 +119,11 @@ public class ConversationItem extends LinearLayout {
   private FutureTaskListener<SlideDeck>   slideDeckListener;
   private TypedArray                      backgroundDrawables;
 
-  private final FailedIconClickListener failedIconClickListener         = new FailedIconClickListener();
-  private final MmsDownloadClickListener mmsDownloadClickListener       = new MmsDownloadClickListener();
+  private final FailedIconClickListener     failedIconClickListener     = new FailedIconClickListener();
+  private final MmsDownloadClickListener    mmsDownloadClickListener    = new MmsDownloadClickListener();
   private final MmsPreferencesClickListener mmsPreferencesClickListener = new MmsPreferencesClickListener();
-  private final ClickListener clickListener                             = new ClickListener();
-  private final Handler handler                                         = new Handler();
+  private final ClickListener               clickListener               = new ClickListener();
+  private final Handler                     handler                     = new Handler();
   private final Context context;
 
   public ConversationItem(Context context) {
@@ -158,17 +160,21 @@ public class ConversationItem extends LinearLayout {
     setOnClickListener(clickListener);
     if (failedImage != null)       failedImage.setOnClickListener(failedIconClickListener);
     if (mmsDownloadButton != null) mmsDownloadButton.setOnClickListener(mmsDownloadClickListener);
+
+    mmsThumbnail.setOnLongClickListener(new MultiSelectLongClickListener());
   }
 
-  public void set(MasterSecret masterSecret, MessageRecord messageRecord, Set<MessageRecord> batchSelected,
+  public void set(MasterSecret masterSecret, MessageRecord messageRecord,
+                  Set<MessageRecord> batchSelected, SelectionClickListener selectionClickListener,
                   Handler failedIconHandler, boolean groupThread, boolean pushDestination)
   {
-    this.masterSecret      = masterSecret;
-    this.messageRecord     = messageRecord;
-    this.batchSelected     = batchSelected;
-    this.failedIconHandler = failedIconHandler;
-    this.groupThread       = groupThread;
-    this.pushDestination   = pushDestination;
+    this.masterSecret           = masterSecret;
+    this.messageRecord          = messageRecord;
+    this.batchSelected          = batchSelected;
+    this.selectionClickListener = selectionClickListener;
+    this.failedIconHandler      = failedIconHandler;
+    this.groupThread            = groupThread;
+    this.pushDestination        = pushDestination;
 
     setConversationBackgroundDrawables(messageRecord);
     setSelectionBackgroundDrawables(messageRecord);
@@ -254,8 +260,16 @@ public class ConversationItem extends LinearLayout {
   }
 
   private void setBodyText(MessageRecord messageRecord) {
-      bodyText.setText(Emoji.getInstance(context).emojify(messageRecord.getDisplayBody(), new Emoji.InvalidatingPageLoadedListener(bodyText)),
-                       TextView.BufferType.SPANNABLE);
+    bodyText.setClickable(false);
+    bodyText.setFocusable(false);
+    bodyText.setText(Emoji.getInstance(context).emojify(messageRecord.getDisplayBody(),
+                                                        new Emoji.InvalidatingPageLoadedListener(bodyText)),
+                     TextView.BufferType.SPANNABLE);
+
+    if (bodyText.isClickable() && bodyText.isFocusable()) {
+      bodyText.setOnLongClickListener(new MultiSelectLongClickListener());
+      bodyText.setOnClickListener(new MultiSelectLongClickListener());
+    }
   }
 
   private void setContactPhoto(MessageRecord messageRecord) {
@@ -383,12 +397,6 @@ public class ConversationItem extends LinearLayout {
               if (slide.hasImage()) {
                 slide.setThumbnailOn(mmsThumbnail);
                 mmsThumbnail.setOnClickListener(new ThumbnailClickListener(slide));
-                mmsThumbnail.setOnLongClickListener(new OnLongClickListener() {
-                  @Override
-                  public boolean onLongClick(View v) {
-                    return false;
-                  }
-                });
                 mmsThumbnail.setVisibility(View.VISIBLE);
                 return;
               }
@@ -492,7 +500,9 @@ public class ConversationItem extends LinearLayout {
     }
 
     public void onClick(View v) {
-      if (MediaPreviewActivity.isContentTypeSupported(slide.getContentType())) {
+      if (!batchSelected.isEmpty()) {
+        selectionClickListener.onItemClick(null, ConversationItem.this, -1, -1);
+      } else if (MediaPreviewActivity.isContentTypeSupported(slide.getContentType())) {
         Intent intent = new Intent(context, MediaPreviewActivity.class);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         intent.setDataAndType(slide.getUri(), slide.getContentType());
@@ -560,6 +570,19 @@ public class ConversationItem extends LinearLayout {
         handleKeyExchangeClicked();
       else if (messageRecord.isPendingSmsFallback())
         handleMessageApproval();
+    }
+  }
+
+  private class MultiSelectLongClickListener implements OnLongClickListener, OnClickListener {
+    @Override
+    public boolean onLongClick(View v) {
+      selectionClickListener.onItemLongClick(null, ConversationItem.this, -1, -1);
+      return true;
+    }
+
+    @Override
+    public void onClick(View v) {
+      selectionClickListener.onItemClick(null, ConversationItem.this, -1, -1);
     }
   }
 
