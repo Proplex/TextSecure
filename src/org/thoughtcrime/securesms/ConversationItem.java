@@ -160,8 +160,7 @@ public class ConversationItem extends LinearLayout {
     setOnClickListener(clickListener);
     if (failedImage != null)       failedImage.setOnClickListener(failedIconClickListener);
     if (mmsDownloadButton != null) mmsDownloadButton.setOnClickListener(mmsDownloadClickListener);
-
-    mmsThumbnail.setOnLongClickListener(new MultiSelectLongClickListener());
+    if (mmsThumbnail != null)      mmsThumbnail.setOnLongClickListener(new MultiSelectLongClickListener());
   }
 
   public void set(MasterSecret masterSecret, MessageRecord messageRecord,
@@ -575,13 +574,15 @@ public class ConversationItem extends LinearLayout {
 
   private class MultiSelectLongClickListener implements OnLongClickListener, OnClickListener {
     @Override
-    public boolean onLongClick(View v) {
+    public boolean onLongClick(View view) {
+      Log.w(TAG, "onLongclick" + view);
       selectionClickListener.onItemLongClick(null, ConversationItem.this, -1, -1);
       return true;
     }
 
     @Override
-    public void onClick(View v) {
+    public void onClick(View view) {
+      Log.w(TAG, "onClick: " + view);
       selectionClickListener.onItemClick(null, ConversationItem.this, -1, -1);
     }
   }
